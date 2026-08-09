@@ -14,56 +14,17 @@ const getIconForOption = (text) => {
   return <MessageSquare size={16} />;
 };
 
-const UT_KNOWLEDGE = {
-  pricing: {
-    text: "Our micro-cleaning services start at just ₹249. We handle the chores so you don't have to.",
-    card: {
-      type: 'pricing',
-      title: "Sweep & Mop",
-      price: "₹249",
-      unit: "/room",
-      action: "Book Service",
-      icon: <Sparkles size={24} />
-    },
-    options: ["Monthly Plan", "Coverage Area", "Other Services"]
-  },
-  other_services: {
-    text: "We offer specialized cleaning to keep every corner pristine:",
-    options: ["Fan Cleaning (₹149)", "Bathroom (₹349)", "Car Cleaning (₹299)", "Go Back"]
-  },
-  coverage: {
-    text: "Our verified professionals are active in key South Chennai communities.",
-    card: {
-      type: 'location',
-      title: "Active Hubs",
-      price: "OMR & ECR",
-      unit: " Corridor",
-      action: "Check My Pincode",
-      icon: <MapPin size={24} />
-    },
-    options: ["Perungudi", "Thoraipakkam", "Kandanchavadi", "Go Back"]
-  },
-  subscription: {
-    text: "Set it and forget it. A dedicated Guild team arrives automatically on schedule.",
-    card: {
-      type: 'subscription',
-      title: "Recurrent Plan",
-      price: "₹4,499",
-      unit: "/mo",
-      action: "Build My Plan",
-      icon: <Calendar size={24} />
-    },
-    options: ["Trust & Safety", "Pricing"]
-  },
-  trust: {
-    text: "Every Utservio professional is background-verified. We guarantee 100% service continuity with seamless replacements.",
-    options: ["Monthly Plan", "Coverage Area"]
-  },
-  default: {
-    text: "I'm the Utservio AI assistant! I can help you with pricing, coverage areas, or setting up a recurrent cleaning plan.",
-    options: ["Pricing", "Coverage Area", "Monthly Plan", "Trust & Safety"]
-  }
-};
+const SYSTEM_PROMPT = `
+You are the Utservio AI assistant. You help customers with pricing, coverage, and recurrent subscriptions for home cleaning services in Chennai. 
+Keep your answers very brief, friendly, and highly professional. Never invent prices or services.
+Use the following knowledge base to answer questions:
+1. Pricing: Micro-cleaning starts at ₹249. Fan cleaning from ₹149, sweep & mop from ₹249 per room, bathroom from ₹349, car from ₹299.
+2. Coverage: Perungudi, Thoraipakkam, Kandanchavadi, Sholinganallur, Karapakkam, OMR and ECR corridors.
+3. Subscription: Recurrent daily plans start at ₹4,499/month for sweep, mop, dust, and bathroom cleaning. Dedicated rotating team, zero no-shows.
+4. Trust: All pros are background verified.
+
+If a user asks a complex question, do your best to answer it helpfully based on this knowledge. Do not format your response with markdown headers, just simple paragraphs.
+`;
 
 function App() {
   const [hasStarted, setHasStarted] = useState(false);
@@ -71,11 +32,14 @@ function App() {
     {
       id: 1,
       sender: 'bot',
-      text: "Hi there! Welcome to Utservio. How can I help you keep your home spotless today?",
+      text: "Hi there! Welcome to Utservio. I'm your AI assistant—how can I help you keep your home spotless today?",
       options: ["Pricing", "Coverage Area", "Monthly Plan", "Trust & Safety"]
     }
   ];
 
+  const [chatHistory, setChatHistory] = useState([
+    { role: 'system', content: SYSTEM_PROMPT }
+  ]);
   const [messages, setMessages] = useState(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -101,7 +65,7 @@ function App() {
     setInputValue('');
   };
 
-  const handleSend = (text) => {
+  const handleSend = async (text) => {
     if (!text.trim()) return;
 
     const newUserMsg = { id: Date.now(), sender: 'user', text };
@@ -109,31 +73,53 @@ function App() {
     setInputValue('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      let botResponse = UT_KNOWLEDGE.default;
-      const lowerText = text.toLowerCase();
+    const newHistory = [...chatHistory, { role: 'user', content: text }];
+    setChatHistory(newHistory);
 
-      if (lowerText.includes('price') || lowerText.includes('cost') || lowerText.includes('₹') || lowerText.includes('sweep')) {
-        botResponse = UT_KNOWLEDGE.pricing;
-      } else if (lowerText.includes('other') || lowerText.includes('fan') || lowerText.includes('bath') || lowerText.includes('car')) {
-        botResponse = UT_KNOWLEDGE.other_services;
-      } else if (lowerText.includes('cover') || lowerText.includes('area') || lowerText.includes('chennai') || lowerText.includes('perungudi') || lowerText.includes('thoraipakkam')) {
-        botResponse = UT_KNOWLEDGE.coverage;
-      } else if (lowerText.includes('month') || lowerText.includes('subscript') || lowerText.includes('plan') || lowerText.includes('recurrent')) {
-        botResponse = UT_KNOWLEDGE.subscription;
-      } else if (lowerText.includes('trust') || lowerText.includes('safe') || lowerText.includes('verify') || lowerText.includes('who')) {
-        botResponse = UT_KNOWLEDGE.trust;
+    try {
+      // The proxy expects a single string input, so we format the history
+      const promptString = newHistory.map(msg => 
+        `${msg.role === 'system' ? 'System Instructions' : msg.role === 'assistant' ? 'Assistant' : 'User'}: ${msg.content}`
+      ).join('\n') + '\nAssistant: ';
+
+      const response = await fetch('/api/llm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_LLM_API_KEY}`
+        },
+        body: JSON.stringify({
+          input: promptString
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
       }
 
+      const data = await response.json();
+      
+      // Parse the custom proxy response format
+      const messageObj = data.output?.find(o => o.type === 'message');
+      const aiText = messageObj?.content?.[0]?.text || "Sorry, I'm having trouble connecting right now.";
+
+      setChatHistory([...newHistory, { role: 'assistant', content: aiText }]);
+      
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         sender: 'bot',
-        text: botResponse.text,
-        card: botResponse.card,
-        options: botResponse.options
+        text: aiText
       }]);
+    } catch (error) {
+      console.error("Chat error:", error);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        sender: 'bot',
+        text: "I'm sorry, I'm having trouble reaching the Utservio servers right now. Please try again later."
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1500); // More realistic thinking delay
+    }
   };
 
   const formatTime = () => {
