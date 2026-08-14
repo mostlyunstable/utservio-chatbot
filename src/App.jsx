@@ -1,9 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { 
   Send, RotateCcw, MessageSquare, MapPin, 
-  CreditCard, ShieldCheck, Sparkles, Calendar, ChevronRight 
+  CreditCard, ShieldCheck, Sparkles, ChevronRight,
+  Camera
 } from 'lucide-react';
 import './App.css';
+
+const BotIcon = () => {
+  return <MessageSquare size={16} />;
+};
 
 const getIconForOption = (text) => {
   const lower = text.toLowerCase();
@@ -14,36 +19,31 @@ const getIconForOption = (text) => {
   return <MessageSquare size={16} />;
 };
 
-const SYSTEM_PROMPT = `
-You are the Utservio AI assistant. You help customers with pricing, coverage, and recurrent subscriptions for home cleaning services in Chennai. 
-Keep your answers very brief, friendly, and highly professional. Never invent prices or services.
-Use the following knowledge base to answer questions:
-1. Pricing: Micro-cleaning starts at ₹249. Fan cleaning from ₹149, sweep & mop from ₹249 per room, bathroom from ₹349, car from ₹299.
-2. Coverage: Perungudi, Thoraipakkam, Kandanchavadi, Sholinganallur, Karapakkam, OMR and ECR corridors.
-3. Subscription: Recurrent daily plans start at ₹4,499/month for sweep, mop, dust, and bathroom cleaning. Dedicated rotating team, zero no-shows.
-4. Trust: All pros are background verified.
-
-If a user asks a complex question, do your best to answer it helpfully based on this knowledge. Do not format your response with markdown headers, just simple paragraphs.
-`;
+const initialMessages = [
+  {
+    id: 1,
+    sender: 'bot',
+    text: "Hi! Welcome to UTservio. How can I help you today?",
+    type: "options",
+    options: ["Book a Service", "Explore Services", "Check Pricing", "Service Areas"]
+  }
+];
 
 function App() {
   const [hasStarted, setHasStarted] = useState(false);
-  const initialMessages = [
-    {
-      id: 1,
-      sender: 'bot',
-      text: "Hi there! Welcome to Utservio. I'm your AI assistant—how can I help you keep your home spotless today?",
-      options: ["Pricing", "Coverage Area", "Monthly Plan", "Trust & Safety"]
-    }
-  ];
 
-  const [chatHistory, setChatHistory] = useState([
-    { role: 'system', content: SYSTEM_PROMPT }
-  ]);
+  const [sessionId] = useState(() => {
+    const saved = localStorage.getItem('utservio_session_id');
+    if (saved) return saved;
+    const newSession = crypto.randomUUID();
+    localStorage.setItem('utservio_session_id', newSession);
+    return newSession;
+  });
   const [messages, setMessages] = useState(initialMessages);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatMessagesRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const scrollToBottom = () => {
     if (chatMessagesRef.current) {
@@ -60,36 +60,75 @@ function App() {
     }
   }, [messages, isTyping, hasStarted]);
 
+  useEffect(() => {
+    // Load history on mount
+    const fetchHistory = async () => {
+      try {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const response = await fetch(`${baseUrl}/api/chat/${sessionId}/history`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.messages && data.messages.length > 0) {
+            const restoredMessages = data.messages.map((msg, idx) => ({
+              id: Date.now() + idx,
+              sender: msg.role === 'assistant' ? 'bot' : 'user',
+              text: msg.content
+            }));
+            setMessages([...initialMessages, ...restoredMessages]);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load chat history:", err);
+      }
+    };
+    fetchHistory();
+  }, [sessionId]);
+
   const handleReset = () => {
     setMessages(initialMessages);
     setInputValue('');
+    const newSession = crypto.randomUUID();
+    localStorage.setItem('utservio_session_id', newSession);
+    window.location.reload();
   };
 
-  const handleSend = async (text) => {
-    if (!text.trim()) return;
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result;
+        const newUserMsg = { id: Date.now(), sender: 'user', text: '', image: base64 };
+        setMessages(prev => [...prev, newUserMsg]);
+        handleSend('Analyze this image to estimate cleaning costs.', base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-    const newUserMsg = { id: Date.now(), sender: 'user', text };
-    setMessages(prev => [...prev, newUserMsg]);
+  const handleSend = async (text, imageData = null) => {
+    if (!text.trim() && !imageData) return;
+
+    if (!imageData) {
+      const newUserMsg = { id: Date.now(), sender: 'user', text };
+      setMessages(prev => [...prev, newUserMsg]);
+    }
+    
     setInputValue('');
     setIsTyping(true);
 
-    const newHistory = [...chatHistory, { role: 'user', content: text }];
-    setChatHistory(newHistory);
+    const promptText = imageData ? `[User uploaded an image for analysis]. ${text}` : text;
 
     try {
-      // The proxy expects a single string input, so we format the history
-      const promptString = newHistory.map(msg => 
-        `${msg.role === 'system' ? 'System Instructions' : msg.role === 'assistant' ? 'Assistant' : 'User'}: ${msg.content}`
-      ).join('\n') + '\nAssistant: ';
-
-      const response = await fetch('/api/llm', {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_LLM_API_KEY}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          input: promptString
+          session_id: sessionId,
+          message: promptText
         })
       });
 
@@ -98,27 +137,28 @@ function App() {
       }
 
       const data = await response.json();
-      
-      // Parse the custom proxy response format
-      const messageObj = data.output?.find(o => o.type === 'message');
-      const aiText = messageObj?.content?.[0]?.text || "Sorry, I'm having trouble connecting right now.";
+      let aiText = data.message || "Sorry, I'm having trouble connecting right now.";
 
-      setChatHistory([...newHistory, { role: 'assistant', content: aiText }]);
-      
+      const botMsgId = Date.now() + 1;
       setMessages(prev => [...prev, {
-        id: Date.now() + 1,
+        id: botMsgId,
         sender: 'bot',
-        text: aiText
+        text: aiText,
+        type: data.type || 'text',
+        options: data.options || null,
+        data: data.data || null
       }]);
+      setIsTyping(false);
+
     } catch (error) {
       console.error("Chat error:", error);
+      setIsTyping(false);
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         sender: 'bot',
-        text: "I'm sorry, I'm having trouble reaching the Utservio servers right now. Please try again later."
+        text: "I'm sorry, I'm having trouble reaching the Utservio servers right now. Please try again later.",
+        type: 'error'
       }]);
-    } finally {
-      setIsTyping(false);
     }
   };
 
@@ -130,7 +170,6 @@ function App() {
     <div className="app-container">
       <div className="chat-widget">
         
-        {/* Welcome Screen Overlay */}
         <div className={`welcome-overlay ${hasStarted ? 'hidden' : ''}`}>
           <div className="welcome-logo">
             <img src="https://utservio.com/images/op-1/u-logo.png" alt="Utservio Logo" style={{ width: '50%', height: '50%', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }} />
@@ -142,11 +181,9 @@ function App() {
           </button>
         </div>
 
-        {/* Dynamic Background Orbs */}
         <div className="chat-bg-orb-1"></div>
         <div className="chat-bg-orb-2"></div>
         
-        {/* Header */}
         <div className="chat-header">
           <div className="header-left">
             <div className="avatar">
@@ -162,54 +199,134 @@ function App() {
           </button>
         </div>
 
-        {/* Chat Area */}
         <div className="chat-messages" ref={chatMessagesRef}>
-          {messages.map((msg) => (
-            <div key={msg.id} className={`message-wrapper ${msg.sender}`}>
-              <div className="message-bubble">
-                {msg.text}
-              </div>
-              
-              {/* Stunning Glass Ticket Card */}
-              {msg.card && (
-                <div className="rich-card">
-                  <div className="rich-card-header">
-                    <div className="rich-card-icon">{msg.card.icon}</div>
-                    <div className="rich-card-badge">Verified</div>
-                  </div>
-                  <div>
-                    <div className="rich-card-title">{msg.card.title}</div>
-                    <div className="rich-card-price">
-                      {msg.card.price} <span>{msg.card.unit}</span>
+          {messages.map((msg) => {
+            let formattedText = msg.text.replace(/\[Source: (.*?)\]/g, '<span class="citation">Source: $1</span>');
+            // Ensure newlines render correctly if AI outputs plain text \n
+            formattedText = formattedText.replace(/\n/g, '<br/>');
+            
+            return (
+              <div key={msg.id} className={`message-wrapper ${msg.sender}`}>
+                <div className="message-bubble">
+                  {msg.sender === 'bot' && <div className="bot-icon"><BotIcon /></div>}
+                  {msg.image && <img src={msg.image} alt="Upload" className="uploaded-image" style={{ maxWidth: '100%', borderRadius: '8px' }} />}
+                  {msg.text && <p dangerouslySetInnerHTML={{ __html: formattedText }}></p>}
+                  
+                  {/* Service Cards Component */}
+                  {msg.type === 'service_cards' && msg.data?.services && (
+                    <div className="services-grid">
+                      {msg.data.services.map((svc) => (
+                        <div key={svc.id} className="rich-card premium-service-card">
+                          <h4>{svc.name}</h4>
+                          <p className="service-desc">{svc.description || "Premium home service"}</p>
+                          <div className="service-price">
+                            <span className="price-label">
+                              {svc.pricing_type === 'starting_from' ? 'Starts at ' : ''}
+                            </span>
+                            <span className="price-val">₹{svc.price_amount}</span>
+                            <span className="price-unit"> / {svc.price_unit}</span>
+                          </div>
+                          <button 
+                            className="select-btn card-action" 
+                            onClick={() => handleSend(svc.name)}
+                          >
+                            Select
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                  <button className="rich-card-btn" onClick={() => handleSend(msg.card.action)}>
-                    {msg.card.action} <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
+                  )}
 
-              <div className="message-time">
-                {msg.sender === 'bot' ? 'Utservio AI' : 'You'} • {formatTime()}
-              </div>
-              
-              {/* Animated Quick Replies */}
-              {msg.options && msg.sender === 'bot' && (
-                <div className="quick-replies">
-                  {msg.options.map((opt, idx) => (
-                    <button 
-                      key={idx} 
-                      className="quick-reply-btn"
-                      style={{ animationDelay: `${idx * 0.1}s` }}
-                      onClick={() => handleSend(opt)}
-                    >
-                      {getIconForOption(opt)} {opt}
-                    </button>
-                  ))}
+                  {/* Price Detail Card Component */}
+                  {msg.type === 'price_card' && msg.data && (
+                    <div className="rich-card price-details-card holographic">
+                      <h3>{msg.data.service_name}</h3>
+                      <div className="price-display">
+                        <span className="price-amount">₹{msg.data.price_amount}</span>
+                        <span className="price-unit">/ {msg.data.price_unit}</span>
+                      </div>
+                      <p className="price-type">
+                        Type: <strong>{msg.data.pricing_type === 'starting_from' ? 'Starting From' : 'Fixed'}</strong>
+                      </p>
+                      <p className="location-info">
+                        Location: <strong>{msg.data.location_name}</strong>
+                      </p>
+                      <div className="provenance-tag">
+                        <span>✓ Verified UTservio Data</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Date Picker Component */}
+                  {msg.type === 'date_picker' && (
+                    <div className="date-picker-container">
+                      <div className="quick-replies" style={{ marginTop: 0 }}>
+                        <button className="quick-reply-btn" onClick={() => handleSend('Today')}>Today</button>
+                        <button className="quick-reply-btn" onClick={() => handleSend('Tomorrow')}>Tomorrow</button>
+                      </div>
+                      <div className="custom-date-picker">
+                        <label htmlFor="custom-date">Or choose date: </label>
+                        <input 
+                          type="date" 
+                          id="custom-date"
+                          className="date-input"
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleSend(e.target.value);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confirmation / Booking Summary Component */}
+                  {msg.type === 'confirmation_card' && msg.data && (
+                    <div className={`rich-card confirmation-card ${msg.data.status.toLowerCase()}`}>
+                      <div className="confirmation-header">
+                        <span className={`status-badge ${msg.data.status.toLowerCase()}`}>
+                          {msg.data.status}
+                        </span>
+                        {msg.data.booking_id && (
+                          <span className="booking-id">ID: {msg.data.booking_id}</span>
+                        )}
+                      </div>
+                      <div className="confirmation-details">
+                        <p>Service: <strong>{msg.data.service_name}</strong></p>
+                        <p>Location: <strong>{msg.data.location_name}</strong></p>
+                        <p>Date: <strong>{msg.data.date}</strong></p>
+                        <p>Time: <strong>{msg.data.time_slot}</strong></p>
+                        <p>Price: <strong>
+                          {msg.data.pricing_type === 'starting_from' ? 'Starts at ' : ''}
+                          ₹{msg.data.price_amount} / {msg.data.price_unit}
+                        </strong></p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Options Chips / Quick Replies */}
+                  {msg.options && msg.sender === 'bot' && (
+                    <div className="quick-replies">
+                      {msg.options.map((opt, idx) => (
+                        <button 
+                          key={idx} 
+                          className="quick-reply-btn"
+                          onClick={() => handleSend(opt)}
+                          style={{ animationDelay: `${idx * 0.05}s` }}
+                        >
+                          {getIconForOption(opt)} {opt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="message-time">
+                    {msg.sender === 'bot' ? 'Utservio AI' : 'You'} • {formatTime()}
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
           
           {isTyping && (
             <div className="message-wrapper bot">
@@ -231,6 +348,22 @@ function App() {
               handleSend(inputValue);
             }}
           >
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
+            <button 
+              type="button" 
+              className="camera-btn" 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isTyping || !hasStarted}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: '8px' }}
+            >
+              <Camera size={20} />
+            </button>
             <input 
               type="text" 
               className="chat-input"

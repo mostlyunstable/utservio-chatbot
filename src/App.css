@@ -561,3 +561,331 @@
   background: var(--accent);
   box-shadow: 0 16px 40px rgba(240, 173, 28, 0.4);
 }
+
+/* Advanced AI Styles */
+.citation {
+  display: inline-block;
+  background: rgba(240, 173, 28, 0.2);
+  color: var(--primary-gold);
+  border: 1px solid rgba(240, 173, 28, 0.4);
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: text-top;
+}
+
+.uploaded-image {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.camera-btn:hover {
+  color: var(--primary-gold) !important;
+  transform: scale(1.1);
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 4px 8px;
+  transition: all 0.3s ease;
+}
+
+.input-wrapper:focus-within {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.chat-input {
+  flex-grow: 1;
+  background: transparent !important;
+  border: none !important;
+  padding: 12px 8px !important;
+}
+
+.rich-card.holographic {
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(240, 173, 28, 0.05));
+  border: 1px solid rgba(240, 173, 28, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.rich-card.holographic::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 50%; height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
+  transform: skewX(-20deg);
+  animation: shine 3s infinite;
+}
+
+@keyframes shine {
+  0% { left: -100%; }
+  20% { left: 200%; }
+  100% { left: 200%; }
+}
+
+/* Guided UX Conversational Styles */
+.services-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 12px;
+  width: 100%;
+}
+
+@media (min-width: 380px) {
+  .services-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.premium-service-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.premium-service-card:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(240, 173, 28, 0.3);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+.premium-service-card h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.service-desc {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 12px;
+  line-height: 1.4;
+  flex-grow: 1;
+}
+
+.service-price {
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+}
+
+.price-label {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.price-val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.price-unit {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.card-action {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 100px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.card-action:hover {
+  background: #fff;
+  color: #000;
+  transform: scale(1.02);
+}
+
+.premium-service-card .select-btn {
+  background: rgba(240, 173, 28, 0.15);
+  color: var(--primary-gold);
+  border: 1px solid rgba(240, 173, 28, 0.3);
+}
+
+.premium-service-card .select-btn:hover {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+/* Price Details Card */
+.price-details-card {
+  padding: 20px;
+  border-radius: 20px;
+  margin-top: 10px;
+}
+
+.price-details-card h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.price-display {
+  margin-bottom: 14px;
+}
+
+.price-display .price-amount {
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--accent);
+}
+
+.price-display .price-unit {
+  font-size: 1rem;
+  color: rgba(255,255,255,0.7);
+  margin-left: 6px;
+}
+
+.price-details-card p {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 6px;
+}
+
+.provenance-tag {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 100px;
+  margin-top: 10px;
+}
+
+/* Date Picker Container */
+.date-picker-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.custom-date-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.date-input {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Confirmation / Status Card */
+.confirmation-card {
+  padding: 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.confirmation-card.confirmed {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, rgba(20, 20, 28, 0.8), rgba(16, 185, 129, 0.03));
+}
+
+.confirmation-card.pending {
+  border-color: rgba(240, 173, 28, 0.3);
+  background: linear-gradient(135deg, rgba(20, 20, 28, 0.8), rgba(240, 173, 28, 0.03));
+}
+
+.confirmation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 10px;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 100px;
+  letter-spacing: 0.05em;
+}
+
+.status-badge.confirmed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-badge.pending {
+  background: rgba(240, 173, 28, 0.15);
+  color: var(--primary-gold);
+  border: 1px solid rgba(240, 173, 28, 0.3);
+}
+
+.booking-id {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.confirmation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirmation-details p {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.confirmation-details strong {
+  color: #fff;
+}
+

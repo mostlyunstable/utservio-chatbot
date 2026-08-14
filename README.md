@@ -1,43 +1,33 @@
-# Utservio AI Chatbot
+# UTservio Customer Chatbot
 
-A premium, glassmorphic React widget built to support the Utservio customer experience. 
+A premium customer service agent for UTservio.
 
-Utservio is a micro-home cleaning & subscription service in Chennai. This standalone frontend provides an intelligent chatbot interface to help customers understand pricing, service coverage, and subscription plans.
+## Architecture (Phase 1)
+- **Frontend**: React + Vite (Port 5173). Glassmorphic UI with simulated typing and booking cards.
+- **Backend**: Python + FastAPI (Port 8000). Provides secure routing, validation, rate-limiting, and error handling.
+- **LLM**: Cloudflare Worker LLM proxy, accessed securely by the FastAPI backend.
 
-## Features
+## Getting Started
 
-- **Premium Aesthetics**: Stunning glassmorphic design, dynamic background orbs, and holographic ticket cards, tuned to Utservio's exact brand colors (Dark & Gold).
-- **Interactive Knowledge Base**: Built-in logic to handle FAQs seamlessly:
-  - Sweep & Mop, Fan Cleaning, Bathroom Cleaning pricing.
-  - Active coverage hubs (OMR, ECR, Perungudi, etc.).
-  - Recurrent monthly subscriptions.
-- **Micro-animations**: Staggered quick replies, realistic typing indicators, and smooth chat sliding animations.
-- **Lucide Icons**: Crisp, scalable vector iconography for a polished look.
+### 1. Backend Setup
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# Add LLM_API_KEY to .env
+uvicorn app.main:app --reload --port 8000
+```
 
-## Tech Stack
+### 2. Frontend Setup
+```bash
+# In the root directory
+npm install
+npm run dev
+```
 
-- **React 18**
-- **Vite**
-- **Vanilla CSS** (for precise, high-performance styling)
-- **Lucide React** (icons)
-
-## Quick Start
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-3. Build for production:
-   ```bash
-   npm run build
-   ```
-
-## Future Roadmap
-
-- Integrate with the `mostlyunstable/forge` backend (via NVIDIA NIM and Qdrant) to turn the hardcoded FAQ logic into a fully dynamic AI-driven LLM application.
+## Security & Limitations
+- The LLM API key is stored strictly on the server-side (`backend/.env`).
+- Conversations are tracked via `session_id`, but are currently in-memory/ephemeral (Phase 1).
+- Booking cards are visual only; real CRM integrations will arrive in future phases.
